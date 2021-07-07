@@ -94,7 +94,8 @@ module Jekyll
 
     def generate_url_from_drop(template)
       template.gsub(%r!:([a-z_]+)!) do |match|
-        pool = possible_keys(match.sub(":", ""))
+        name = Regexp.last_match(1)
+        pool = name.end_with?("_") ? [name, name.chomp!("_")] : [name]
 
         winner = pool.find { |key| @placeholders.key?(key) }
         if winner.nil?
@@ -107,15 +108,17 @@ module Jekyll
         value = "" if value.nil?
         replacement = self.class.escape_path(value)
 
-        match.sub(":#{winner}", replacement)
-      end.squeeze("/")
+        match.sub!(":#{winner}", replacement)
+      end
     end
 
     # Returns a sanitized String URL, stripping "../../" and multiples of "/",
     # as well as the beginning "/" so we can enforce and ensure it.
-
     def sanitize_url(str)
-      "/#{str}".gsub("..", "/").gsub("./", "").squeeze("/")
+      "/#{str}".gsub("..", "/").tap do |result|
+        result.gsub!("./", "")
+        result.squeeze!("/")
+      end
     end
 
     # Escapes a path to be a valid URL path segment
@@ -129,6 +132,8 @@ module Jekyll
     #
     # Returns the escaped path.
     def self.escape_path(path)
+      return path if path.empty? || %r!^[a-zA-Z0-9./-]+$!.match?(path)
+
       # Because URI.escape doesn't escape "?", "[" and "]" by default,
       # specify unsafe string (except unreserved, sub-delims, ":", "@" and "/").
       #
@@ -139,8 +144,7 @@ module Jekyll
       #   pct-encoded   = "%" HEXDIG HEXDIG
       #   sub-delims    = "!" / "$" / "&" / "'" / "(" / ")"
       #                 / "*" / "+" / "," / ";" / "="
-      path = Addressable::URI.encode(path)
-      path.encode("utf-8").sub("#", "%23")
+      Addressable::URI.encode(path).encode("utf-8").sub("#", "%23")
     end
 
     # Unescapes a URL path segment
@@ -154,7 +158,10 @@ module Jekyll
     #
     # Returns the unescaped path.
     def self.unescape_path(path)
-      Addressable::URI.unencode(path.encode("utf-8"))
+      path = path.encode("utf-8")
+      return path unless path.include?("%")
+
+      Addressable::URI.unencode(path)
     end
   end
 end

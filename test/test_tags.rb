@@ -7,7 +7,6 @@ class TestTags < JekyllUnitTest
     FileUtils.mkdir_p("tmp")
   end
 
-  # rubocop:disable Metrics/AbcSize
   def create_post(content, override = {}, converter_class = Jekyll::Converters::Markdown)
     site = fixture_site({ "highlighter" => "rouge" }.merge(override))
 
@@ -16,14 +15,13 @@ class TestTags < JekyllUnitTest
     site.read if override["read_all"]
 
     info = { :filters => [Jekyll::Filters], :registers => { :site => site } }
-    @converter = site.converters.find { |c| c.class == converter_class }
+    @converter = site.converters.find { |c| c.instance_of?(converter_class) }
     payload = { "highlighter_prefix" => @converter.highlighter_prefix,
                 "highlighter_suffix" => @converter.highlighter_suffix, }
 
     @result = Liquid::Template.parse(content).render!(payload, info)
     @result = @converter.convert(@result)
   end
-  # rubocop:enable Metrics/AbcSize
 
   def fill_post(code, override = {})
     content = <<~CONTENT
@@ -66,30 +64,6 @@ class TestTags < JekyllUnitTest
 
       assert_match r, "ruby key=val"
       assert_match r, "ruby a=b c=d"
-    end
-  end
-
-  context "highlight tag" do
-    setup do
-      create_post <<~CONTENT
-        ---
-        title: This is a test
-        ---
-
-        This is not yet highlighted
-
-        {% highlight html %}
-        <h1>{% unregistered_tag %}</h1>
-        {{ page | inspect }}
-        {% endhighlight %}
-
-        This should not be highlighted, right?
-      CONTENT
-    end
-
-    should "not parse Liquid constructs in the tag markup" do
-      assert_match "{% unregistered_tag %}", @result
-      assert_match "{{ page | inspect }}", @result
     end
   end
 
@@ -176,7 +150,7 @@ class TestTags < JekyllUnitTest
           %(<table class="rouge-table"><tbody>) +
             %(<tr><td class="gutter gl">) +
             %(<pre class="lineno">1\n</pre></td>) +
-            %(<td class="code"><pre>test</pre></td></tr>) +
+            %(<td class="code"><pre>test\n</pre></td></tr>) +
             %(</tbody></table>),
           @result
         )
@@ -299,7 +273,7 @@ class TestTags < JekyllUnitTest
         expected = <<~EOS
           <p>This is not yet highlighted</p>\n
           <figure class="highlight"><pre><code class="language-php" data-lang="php"><table class="rouge-table"><tbody><tr><td class="gutter gl"><pre class="lineno">1
-          </pre></td><td class="code"><pre><span class="nx">test</span></pre></td></tr></tbody></table></code></pre></figure>\n
+          </pre></td><td class="code"><pre><span class="n">test</span>\n</pre></td></tr></tbody></table></code></pre></figure>\n
           <p>This should not be highlighted, right?</p>
         EOS
         assert_match(expected, @result)
@@ -384,7 +358,7 @@ class TestTags < JekyllUnitTest
     end
 
     should "not cause an error" do
-      refute_match(%r!markdown\-html\-error!, @result)
+      refute_match(%r!markdown-html-error!, @result)
     end
 
     should "have the URL to the 'complex' post from 2008-11-21" do
@@ -409,7 +383,7 @@ class TestTags < JekyllUnitTest
     end
 
     should "not cause an error" do
-      refute_match(%r!markdown\-html\-error!, @result)
+      refute_match(%r!markdown-html-error!, @result)
     end
 
     should "have the URL to the 'special-chars' post from 2016-11-26" do
@@ -437,7 +411,7 @@ class TestTags < JekyllUnitTest
     end
 
     should "not cause an error" do
-      refute_match(%r!markdown\-html\-error!, @result)
+      refute_match(%r!markdown-html-error!, @result)
     end
 
     should "have the URL to the 'complex' post from 2008-11-21" do
@@ -468,7 +442,7 @@ class TestTags < JekyllUnitTest
     end
 
     should "not cause an error" do
-      refute_match(%r!markdown\-html\-error!, @result)
+      refute_match(%r!markdown-html-error!, @result)
     end
 
     should "have the url to the 'nested' post from 2008-11-21" do
@@ -540,7 +514,7 @@ class TestTags < JekyllUnitTest
     end
 
     should "not cause an error" do
-      refute_match(%r!markdown\-html\-error!, @result)
+      refute_match(%r!markdown-html-error!, @result)
     end
 
     should "have the URL to the 'contacts' item" do
@@ -578,7 +552,7 @@ class TestTags < JekyllUnitTest
     end
 
     should "not cause an error" do
-      refute_match(%r!markdown\-html\-error!, @result)
+      refute_match(%r!markdown-html-error!, @result)
     end
 
     should "have the URL to the 'contacts' item" do
@@ -611,7 +585,7 @@ class TestTags < JekyllUnitTest
     end
 
     should "not cause an error" do
-      refute_match(%r!markdown\-html\-error!, @result)
+      refute_match(%r!markdown-html-error!, @result)
     end
 
     should "have the URL to the 'yaml_with_dots' item" do
@@ -637,7 +611,7 @@ class TestTags < JekyllUnitTest
     end
 
     should "not cause an error" do
-      refute_match(%r!markdown\-html\-error!, @result)
+      refute_match(%r!markdown-html-error!, @result)
     end
 
     should "have the URL to the 'yaml_with_dots' item" do
@@ -663,7 +637,7 @@ class TestTags < JekyllUnitTest
     end
 
     should "not cause an error" do
-      refute_match(%r!markdown\-html\-error!, @result)
+      refute_match(%r!markdown-html-error!, @result)
     end
 
     should "have the URL to the 'sanitized_path' item" do
@@ -930,6 +904,49 @@ class TestTags < JekyllUnitTest
 
       should "include file with empty parameters" do
         assert_match "<span id=\"include-param\"></span>", @result
+      end
+    end
+
+    context "with include file with special characters without params" do
+      setup do
+        content = <<~CONTENT
+          ---
+          title: special characters
+          ---
+
+          {% include params@2.0.html %}
+        CONTENT
+        create_post(content,
+                    "permalink"   => "pretty",
+                    "source"      => source_dir,
+                    "destination" => dest_dir,
+                    "read_posts"  => true)
+      end
+
+      should "include file with empty parameters" do
+        assert_match "<span id=\"include-param\"></span>", @result
+      end
+    end
+
+    context "with include file with special characters with params" do
+      setup do
+        content = <<~CONTENT
+          ---
+          title: special characters
+          ---
+
+          {% include params@2.0.html param1="foobar" param2="bazbar" %}
+        CONTENT
+        create_post(content,
+                    "permalink"   => "pretty",
+                    "source"      => source_dir,
+                    "destination" => dest_dir,
+                    "read_posts"  => true)
+      end
+
+      should "include file with empty parameters" do
+        assert_match "<li>param1 = foobar</li>", @result
+        assert_match "<li>param2 = bazbar</li>", @result
       end
     end
 

@@ -6,20 +6,101 @@ module Jekyll
       include Enumerable
 
       NON_CONTENT_METHODS = [:fallback_data, :collapse_document].freeze
+      NON_CONTENT_METHOD_NAMES = NON_CONTENT_METHODS.map(&:to_s).freeze
+      private_constant :NON_CONTENT_METHOD_NAMES
 
-      # Get or set whether the drop class is mutable.
-      # Mutability determines whether or not pre-defined fields may be
-      # overwritten.
-      #
-      # is_mutable - Boolean set mutability of the class (default: nil)
-      #
-      # Returns the mutability of the class
-      def self.mutable(is_mutable = nil)
-        @is_mutable = is_mutable || false
-      end
+      # A private stash to avoid repeatedly generating the setter method name string for
+      # a call to `Drops::Drop#[]=`.
+      # The keys of the stash below have a very high probability of being called upon during
+      # the course of various `Jekyll::Renderer#run` calls.
+      SETTER_KEYS_STASH = {
+        "content"            => "content=",
+        "layout"             => "layout=",
+        "page"               => "page=",
+        "paginator"          => "paginator=",
+        "highlighter_prefix" => "highlighter_prefix=",
+        "highlighter_suffix" => "highlighter_suffix=",
+      }.freeze
+      private_constant :SETTER_KEYS_STASH
 
-      def self.mutable?
-        @is_mutable
+      class << self
+        # Get or set whether the drop class is mutable.
+        # Mutability determines whether or not pre-defined fields may be
+        # overwritten.
+        #
+        # is_mutable - Boolean set mutability of the class (default: nil)
+        #
+        # Returns the mutability of the class
+        def mutable(is_mutable = nil)
+          @is_mutable = is_mutable || false
+        end
+
+        def mutable?
+          @is_mutable
+        end
+
+        # public delegation helper methods that calls onto Drop's instance
+        # variable `@obj`.
+
+        # Generate private Drop instance_methods for each symbol in the given list.
+        #
+        # Returns nothing.
+        def private_delegate_methods(*symbols)
+          symbols.each { |symbol| private delegate_method(symbol) }
+          nil
+        end
+
+        # Generate public Drop instance_methods for each symbol in the given list.
+        #
+        # Returns nothing.
+        def delegate_methods(*symbols)
+          symbols.each { |symbol| delegate_method(symbol) }
+          nil
+        end
+
+        # Generate public Drop instance_method for given symbol that calls `@obj.<sym>`.
+        #
+        # Returns delegated method symbol.
+        def delegate_method(symbol)
+          define_method(symbol) { @obj.send(symbol) }
+        end
+
+        # Generate public Drop instance_method named `delegate` that calls `@obj.<original>`.
+        #
+        # Returns delegated method symbol.
+        def delegate_method_as(original, delegate)
+          define_method(delegate) { @obj.send(original) }
+        end
+
+        # Generate public Drop instance_methods for each string entry in the given list.
+        # The generated method(s) access(es) `@obj`'s data hash.
+        #
+        # Returns nothing.
+        def data_delegators(*strings)
+          strings.each do |key|
+            data_delegator(key) if key.is_a?(String)
+          end
+          nil
+        end
+
+        # Generate public Drop instance_methods for given string `key`.
+        # The generated method access(es) `@obj`'s data hash.
+        #
+        # Returns method symbol.
+        def data_delegator(key)
+          define_method(key.to_sym) { @obj.data[key] }
+        end
+
+        # Array of stringified instance methods that do not end with the assignment operator.
+        #
+        # (<klass>.instance_methods always generates a new Array object so it can be mutated)
+        #
+        # Returns array of strings.
+        def getter_method_names
+          @getter_method_names ||= instance_methods.map!(&:to_s).tap do |list|
+            list.reject! { |item| item.end_with?("=") }
+          end
+        end
       end
 
       # Create a new Drop
@@ -30,7 +111,6 @@ module Jekyll
       # Returns nothing
       def initialize(obj)
         @obj = obj
-        @mutations = {} # only if mutable: true
       end
 
       # Access a method in the Drop or a field in the underlying hash data.
@@ -42,8 +122,8 @@ module Jekyll
       #
       # Returns the value for the given key, or nil if none exists
       def [](key)
-        if self.class.mutable? && @mutations.key?(key)
-          @mutations[key]
+        if self.class.mutable? && mutations.key?(key)
+          mutations[key]
         elsif self.class.invokable? key
           public_send key
         else
@@ -66,11 +146,12 @@ module Jekyll
       # and the key matches a method in which case it raises a
       # DropMutationException.
       def []=(key, val)
-        if respond_to?("#{key}=")
-          public_send("#{key}=", val)
+        setter = SETTER_KEYS_STASH[key] || "#{key}="
+        if respond_to?(setter)
+          public_send(setter, val)
         elsif respond_to?(key.to_s)
           if self.class.mutable?
-            @mutations[key] = val
+            mutations[key] = val
           else
             raise Errors::DropMutationException, "Key #{key} cannot be set in the drop."
           end
@@ -84,13 +165,10 @@ module Jekyll
       #
       # Returns an Array of strings which represent method-specific keys.
       def content_methods
-        @content_methods ||= (
-          self.class.instance_methods \
-            - Jekyll::Drops::Drop.instance_methods \
-            - NON_CONTENT_METHODS
-        ).map(&:to_s).reject do |method|
-          method.end_with?("=")
-        end
+        @content_methods ||= \
+          self.class.getter_method_names \
+            - Jekyll::Drops::Drop.getter_method_names \
+            - NON_CONTENT_METHOD_NAMES
       end
 
       # Check if key exists in Drop
@@ -100,7 +178,7 @@ module Jekyll
       # Returns true if the given key is present
       def key?(key)
         return false if key.nil?
-        return true if self.class.mutable? && @mutations.key?(key)
+        return true if self.class.mutable? && mutations.key?(key)
 
         respond_to?(key) || fallback_data.key?(key)
       end
@@ -113,7 +191,7 @@ module Jekyll
       # Returns an Array of unique keys for content for the Drop.
       def keys
         (content_methods |
-          @mutations.keys |
+          mutations.keys |
           fallback_data.keys).flatten
       end
 
@@ -203,6 +281,12 @@ module Jekyll
         raise KeyError, %(key not found: "#{key}") if default.nil? && block.nil?
         return yield(key) unless block.nil?
         return default unless default.nil?
+      end
+
+      private
+
+      def mutations
+        @mutations ||= {}
       end
     end
   end
