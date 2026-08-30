@@ -7,7 +7,7 @@
 #############################################################################
 
 namespace :site do
-  task :generated_pages => [:history, :latest_version, :conduct, :contributing, :support]
+  task :generated_pages => [:history, :latest_version, :conduct, :contributing, :security, :support]
 
   desc "Generate and view the site locally"
   task :preview => :generated_pages do
@@ -71,7 +71,7 @@ namespace :site do
       "redirect_from" => "/conduct/index.html",
       "editable"      => false,
     }
-    siteify_file("CODE_OF_CONDUCT.markdown", front_matter)
+    siteify_file(".github/CODE_OF_CONDUCT.markdown", front_matter)
   end
 
   desc "Copy the contributing file"
@@ -84,9 +84,14 @@ namespace :site do
     siteify_file(".github/SUPPORT.markdown", "title" => "Support")
   end
 
+  desc "Copy the security policy"
+  task :security do
+    siteify_file(".github/SECURITY.markdown", "title" => "Security Policy")
+  end
+
   desc "Write the latest Jekyll version"
   task :latest_version do
-    return if version =~ %r!(beta|rc|alpha)!i
+    next if version =~ %r!(beta|rc|alpha)!i
     require "safe_yaml/load"
     config_file = File.join(docs_folder, "_config.yml")
     config = SafeYAML.load_file(config_file)

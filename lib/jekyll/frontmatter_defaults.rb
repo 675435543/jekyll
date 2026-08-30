@@ -10,11 +10,10 @@ module Jekyll
     # Initializes a new instance.
     def initialize(site)
       @site = site
-      reset
     end
 
     def reset
-      @glob_cache = {}
+      @glob_cache = {} if @glob_cache
     end
 
     def update_deprecated_types(set)
@@ -104,12 +103,12 @@ module Jekyll
     end
 
     def applies_path?(scope, path)
-      return true if !scope.key?("path") || scope["path"].empty?
+      rel_scope_path = scope["path"]
+      return true if !rel_scope_path.is_a?(String) || rel_scope_path.empty?
 
-      sanitized_path = Pathname.new(sanitize_path(path))
-      rel_scope_path = Pathname.new(scope["path"])
+      sanitized_path = sanitize_path(path)
 
-      if scope["path"].to_s.include?("*")
+      if rel_scope_path.include?("*")
         glob_scope(sanitized_path, rel_scope_path)
       else
         path_is_subpath?(sanitized_path, strip_collections_dir(rel_scope_path))
@@ -121,7 +120,7 @@ module Jekyll
       abs_scope_path = site_source.join(rel_scope_path).to_s
 
       glob_cache(abs_scope_path).each do |scope_path|
-        scope_path = Pathname.new(scope_path).relative_path_from(site_source)
+        scope_path = Pathname.new(scope_path).relative_path_from(site_source).to_s
         scope_path = strip_collections_dir(scope_path)
         Jekyll.logger.debug "Globbed Scope Path:", scope_path
         return true if path_is_subpath?(sanitized_path, scope_path)
@@ -130,20 +129,17 @@ module Jekyll
     end
 
     def glob_cache(path)
+      @glob_cache ||= {}
       @glob_cache[path] ||= Dir.glob(path)
     end
 
     def path_is_subpath?(path, parent_path)
-      path.ascend do |ascended_path|
-        return true if ascended_path.to_s == parent_path.to_s
-      end
-
-      false
+      path.start_with?(parent_path)
     end
 
     def strip_collections_dir(path)
       collections_dir  = @site.config["collections_dir"]
-      slashed_coll_dir = "#{collections_dir}/"
+      slashed_coll_dir = collections_dir.empty? ? "/" : "#{collections_dir}/"
       return path if collections_dir.empty? || !path.to_s.start_with?(slashed_coll_dir)
 
       path.sub(slashed_coll_dir, "")
@@ -161,7 +157,7 @@ module Jekyll
     # Returns true if either of the above conditions are satisfied,
     #   otherwise returns false
     def applies_type?(scope, type)
-      !scope.key?("type") || scope["type"].eql?(type.to_s)
+      !scope.key?("type") || type&.to_sym.eql?(scope["type"].to_sym)
     end
 
     # Checks if a given set of default values is valid
@@ -179,7 +175,7 @@ module Jekyll
     # new_scope - the new scope hash
     #
     # Returns true if the new scope has precedence over the older
-    # rubocop: disable PredicateName
+    # rubocop: disable Naming/PredicateName
     def has_precedence?(old_scope, new_scope)
       return true if old_scope.nil?
 
@@ -194,7 +190,7 @@ module Jekyll
         !old_scope.key? "type"
       end
     end
-    # rubocop: enable PredicateName
+    # rubocop: enable Naming/PredicateName
 
     # Collects a list of sets that match the given path and type
     #
@@ -202,10 +198,8 @@ module Jekyll
     def matching_sets(path, type)
       @matched_set_cache ||= {}
       @matched_set_cache[path] ||= {}
-      @matched_set_cache[path][type] ||= begin
-        valid_sets.select do |set|
-          !set.key?("scope") || applies?(set["scope"], path, type)
-        end
+      @matched_set_cache[path][type] ||= valid_sets.select do |set|
+        !set.key?("scope") || applies?(set["scope"], path, type)
       end
     end
 
@@ -227,18 +221,17 @@ module Jekyll
           Jekyll.logger.warn set.to_s
           nil
         end
-      end.compact
+      end.tap(&:compact!)
     end
 
-    # Sanitizes the given path by removing a leading and adding a trailing slash
-
-    SANITIZATION_REGEX = %r!\A/|(?<=[^/])\z!.freeze
-
+    # Sanitizes the given path by removing a leading slash
     def sanitize_path(path)
       if path.nil? || path.empty?
         ""
+      elsif path.start_with?("/")
+        path.gsub(%r!\A/|(?<=[^/])\z!, "")
       else
-        path.gsub(SANITIZATION_REGEX, "")
+        path
       end
     end
   end

@@ -82,8 +82,8 @@ Feature: Collections
     When I run jekyll build
     Then I should get a zero exit status
     Then the _site directory should exist
-    And I should see "Collections: _methods/3940394-21-9393050-fifif1323-test.md _methods/collection/entries _methods/configuration.md _methods/escape-\+ #%20\[\].md _methods/sanitized_path.md _methods/site/generate.md _methods/site/initialize.md _methods/trailing-dots...md _methods/um_hi.md" in "_site/index.html" unless Windows
-    And I should see "Collections: _methods/3940394-21-9393050-fifif1323-test.md _methods/collection/entries _methods/configuration.md _methods/escape-\+ #%20\[\].md _methods/sanitized_path.md _methods/site/generate.md _methods/site/initialize.md _methods/trailing-dots...md _methods/yaml_with_dots.md" in "_site/index.html" if on Windows
+    And I should see "Collections: _methods/3940394-21-9393050-fifif1323-test.md _methods/collection/entries _methods/configuration.md _methods/escape-\+ #%20\[\].md _methods/sanitized_path.md _methods/site/generate.md _methods/site/initialize.md _methods/trailing-dots...md _methods/um_hi.md" in "_site/index.html" if platform supports symlinks
+    And I should see "Collections: _methods/3940394-21-9393050-fifif1323-test.md _methods/collection/entries _methods/configuration.md _methods/escape-\+ #%20\[\].md _methods/sanitized_path.md _methods/site/generate.md _methods/site/initialize.md _methods/trailing-dots...md _methods/yaml_with_dots.md" in "_site/index.html" if platform does not support symlinks
 
   Scenario: Collections specified as an hash
     Given I have an "index.html" page that contains "Collections: {% for method in site.methods %}{{ method.relative_path }} {% endfor %}"
@@ -96,8 +96,8 @@ Feature: Collections
     When I run jekyll build
     Then I should get a zero exit status
     Then the _site directory should exist
-    And I should see "Collections: _methods/3940394-21-9393050-fifif1323-test.md _methods/collection/entries _methods/configuration.md _methods/escape-\+ #%20\[\].md _methods/sanitized_path.md _methods/site/generate.md _methods/site/initialize.md _methods/trailing-dots...md _methods/um_hi.md" in "_site/index.html" unless Windows
-    And I should see "Collections: _methods/3940394-21-9393050-fifif1323-test.md _methods/collection/entries _methods/configuration.md _methods/escape-\+ #%20\[\].md _methods/sanitized_path.md _methods/site/generate.md _methods/site/initialize.md _methods/trailing-dots...md _methods/yaml_with_dots.md" in "_site/index.html" if on Windows
+    And I should see "Collections: _methods/3940394-21-9393050-fifif1323-test.md _methods/collection/entries _methods/configuration.md _methods/escape-\+ #%20\[\].md _methods/sanitized_path.md _methods/site/generate.md _methods/site/initialize.md _methods/trailing-dots...md _methods/um_hi.md" in "_site/index.html" if platform supports symlinks
+    And I should see "Collections: _methods/3940394-21-9393050-fifif1323-test.md _methods/collection/entries _methods/configuration.md _methods/escape-\+ #%20\[\].md _methods/sanitized_path.md _methods/site/generate.md _methods/site/initialize.md _methods/trailing-dots...md _methods/yaml_with_dots.md" in "_site/index.html" if platform does not support symlinks
 
   Scenario: Rendered collection with document with future date
     Given I have a _puppies directory
@@ -377,8 +377,8 @@ Feature: Collections
     When I run jekyll build
     Then I should get a zero exit status
     Then the _site directory should exist
-    And I should see "All documents: _methods/3940394-21-9393050-fifif1323-test.md _methods/collection/entries _methods/configuration.md _methods/escape-\+ #%20\[\].md _methods/sanitized_path.md _methods/site/generate.md _methods/site/initialize.md _methods/trailing-dots...md _methods/um_hi.md" in "_site/index.html" unless Windows
-    And I should see "All documents: _methods/3940394-21-9393050-fifif1323-test.md _methods/collection/entries _methods/configuration.md _methods/escape-\+ #%20\[\].md _methods/sanitized_path.md _methods/site/generate.md _methods/site/initialize.md _methods/trailing-dots...md _methods/yaml_with_dots.md" in "_site/index.html" if on Windows
+    And I should see "All documents: _methods/3940394-21-9393050-fifif1323-test.md _methods/collection/entries _methods/configuration.md _methods/escape-\+ #%20\[\].md _methods/sanitized_path.md _methods/site/generate.md _methods/site/initialize.md _methods/trailing-dots...md _methods/um_hi.md" in "_site/index.html" if platform supports symlinks
+    And I should see "All documents: _methods/3940394-21-9393050-fifif1323-test.md _methods/collection/entries _methods/configuration.md _methods/escape-\+ #%20\[\].md _methods/sanitized_path.md _methods/site/generate.md _methods/site/initialize.md _methods/trailing-dots...md _methods/yaml_with_dots.md" in "_site/index.html" if platform does not support symlinks
 
   Scenario: Documents have an output attribute, which is the converted HTML
     Given I have an "index.html" page that contains "Second document's output: {{ site.documents[2].output }}"
@@ -391,7 +391,7 @@ Feature: Collections
     When I run jekyll build
     Then I should get a zero exit status
     Then the _site directory should exist
-    And I should see "Second document's output: <p>Use <code class=\"highlighter-rouge\">Jekyll.configuration</code> to build a full configuration for use w/Jekyll.</p>\n\n<p>Whatever: foo.bar</p>" in "_site/index.html"
+    And I should see "Second document's output: <p>Use <code class=\"language-plaintext highlighter-rouge\">Jekyll.configuration</code> to build a full configuration for use w/Jekyll.</p>\n\n<p>Whatever: foo.bar</p>" in "_site/index.html"
 
   Scenario: Documents have an output attribute, which is the converted HTML based on site.config
     Given I have an "index.html" page that contains "Second document's output: {{ site.documents[2].output }}"
@@ -432,8 +432,8 @@ Feature: Collections
     When I run jekyll build
     Then I should get a zero exit status
     And the _site directory should exist
-    And I should see "2. of 10: <p>Page without title.</p>" in "_site/index.html" unless Windows
-    And I should see "2. of 9: <p>Page without title.</p>" in "_site/index.html" if on Windows
+    And I should see "2. of 10: <p>Page without title.</p>" in "_site/index.html" if platform supports symlinks
+    And I should see "2. of 9: <p>Page without title.</p>" in "_site/index.html" if platform does not support symlinks
 
   Scenario: Sort by relative_path
     Given I have an "index.html" page that contains "Collections: {% assign methods = site.methods | sort: 'relative_path' %}{{ methods | map:"title" | join: ", " }}"
@@ -446,8 +446,8 @@ Feature: Collections
     When I run jekyll build
     Then I should get a zero exit status
     Then the _site directory should exist
-    And I should see "Collections: this is a test!, Collection#entries, Jekyll.configuration, Jekyll.escape, Jekyll.sanitized_path, Site#generate, Initialize, Ellipsis Path, Site#generate, YAML with Dots" in "_site/index.html" unless Windows
-    And I should see "Collections: this is a test!, Collection#entries, Jekyll.configuration, Jekyll.escape, Jekyll.sanitized_path, Site#generate, Initialize, Ellipsis Path, YAML with Dots" in "_site/index.html" if on Windows
+    And I should see "Collections: this is a test!, Collection#entries, Jekyll.configuration, Jekyll.escape, Jekyll.sanitized_path, Site#generate, Initialize, Ellipsis Path, Site#generate, YAML with Dots" in "_site/index.html" if platform supports symlinks
+    And I should see "Collections: this is a test!, Collection#entries, Jekyll.configuration, Jekyll.escape, Jekyll.sanitized_path, Site#generate, Initialize, Ellipsis Path, YAML with Dots" in "_site/index.html" if platform does not support symlinks
 
   Scenario: Sort all entries by a Front Matter key defined in all entries
     Given I have an "index.html" page that contains "Collections: {{ site.tutorials | map: 'title' | join: ', ' }}"
@@ -610,3 +610,50 @@ Feature: Collections
     And I should see "Thanksgiving Black Friday" in "_site/index.html"
     And I should see "Happy Thanksgiving" in "_site/thanksgiving/2015-11-26-thanksgiving.html"
     And I should see "Black Friday" in "_site/thanksgiving/black-friday.html"
+
+  Scenario: Rendered collection with custom permalinks and static file contents
+    Given I have fixture collections
+    And I have a "_config.yml" file with content:
+    """
+    collections:
+      methods:
+        output: true
+        permalink: /:collection/:name
+    """
+    When I run jekyll build
+    Then I should get a zero exit status
+    And the _site directory should exist
+    And I should see "I have no front matter." in "_site/methods/extensionless_static_file"
+
+  Scenario: Rendered collection with an extensionless document
+    Given I have fixture collections
+    And I have a "_config.yml" file with content:
+    """
+    collections:
+      methods:
+        output: true
+    """
+    When I run jekyll build
+    Then I should get a zero exit status
+    And the _site directory should exist
+    And I should see "I have no file extension but I should still be a part of the collection." in "_site/methods/collection/entries"
+
+  Scenario: Rendered collection with an extensionless document in a strict site
+    Given I have fixture collections
+    And I have a _posts directory
+    And I have an "_posts/2019-12-26-extensioned.md" file that contains "Hello!"
+    And I have an "_posts/2019-12-26-extensionless" file that contains "Aloha!"
+    And I have an "index.md" page that contains "{{ site.posts | map: 'title' }}"
+    And I have a "_config.yml" file with content:
+    """
+    strict_front_matter: true
+    collections:
+      methods:
+        output: true
+    """
+    When I run jekyll build
+    Then I should get a zero exit status
+    And the _site directory should exist
+    And I should see "I have no file extension but I should still be a part of the collection." in "_site/methods/collection/entries"
+    And I should see "Extensioned" in "_site/index.html"
+    But I should not see "Extensionless" in "_site/index.html"
